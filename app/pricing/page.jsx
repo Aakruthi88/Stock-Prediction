@@ -1,27 +1,70 @@
 "use client";
 
-import { useState } from 'react';
-import { Tag, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
-
-const initialProducts = [
-    { id: 1, name: 'Milk 1L', currentPrice: 2.50, suggestedPrice: 2.75, elasticity: 'High', demand: 'High', reason: 'High demand, low stock' },
-    { id: 2, name: 'Bread Loaf', currentPrice: 1.80, suggestedPrice: 1.80, elasticity: 'Medium', demand: 'Stable', reason: 'Optimal price point' },
-    { id: 3, name: 'Eggs (12pk)', currentPrice: 3.00, suggestedPrice: 3.50, elasticity: 'Low', demand: 'Very High', reason: 'Competitor price increase' },
-    { id: 4, name: 'Butter 500g', currentPrice: 4.50, suggestedPrice: 4.20, elasticity: 'High', demand: 'Low', reason: 'Clearance for new batch' },
-    { id: 5, name: 'Yogurt Cup', currentPrice: 1.20, suggestedPrice: 1.30, elasticity: 'Medium', demand: 'Rising', reason: 'Seasonal trend' },
-];
+import { useState, useEffect } from 'react';
+import { Tag, ArrowUp, ArrowDown, RefreshCw, Loader2 } from 'lucide-react';
 
 export default function PricingPage() {
-    const [products, setProducts] = useState(initialProducts);
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = () => {
+        setLoading(true);
+        fetch('/api/model-api?limit=100')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const processed = data.predictions.map(item => {
+                        // Simulate current price if missing (random between $2 and $20)
+                        const currentPrice = item.price || parseFloat((Math.random() * 18 + 2).toFixed(2));
+
+                        let suggestedPrice = currentPrice;
+                        let reason = "Stable market conditions";
+                        let elasticity = "Medium";
+
+                        // Pricing Logic
+                        if (item.need_restock_7d) {
+                            suggestedPrice = currentPrice * 1.10; // +10%
+                            reason = "High demand, low stock availability";
+                            elasticity = "Low";
+                        } else if (item.days_left > 60) {
+                            suggestedPrice = currentPrice * 0.90; // -10%
+                            reason = "Excess inventory, clearance recommended";
+                            elasticity = "High";
+                        }
+
+                        return {
+                            ...item,
+                            currentPrice,
+                            suggestedPrice,
+                            reason,
+                            elasticity
+                        };
+                    });
+                    setProducts(processed);
+                }
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                setLoading(false);
+            });
+    };
 
     const applyPrice = (id) => {
         setProducts(products.map(p => {
-            if (p.id === id) {
+            if (p.item_id === id) {
                 return { ...p, currentPrice: p.suggestedPrice };
             }
             return p;
         }));
+        // Here you would typically make an API call to update the price in the DB
     };
+
+    if (loading) return <div className="p-8 text-center">Loading pricing data...</div>;
 
     return (
         <div>
@@ -33,8 +76,9 @@ export default function PricingPage() {
             <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: '600' }}>Price Optimization Suggestions</h3>
-                    <button className="btn btn-outline" onClick={() => window.location.reload()}>
-                        <RefreshCw size={16} style={{ marginRight: '0.5rem' }} /> Refresh Data
+                    <button className="btn btn-outline" onClick={fetchData} disabled={loading}>
+                        {loading ? <Loader2 className="animate-spin" size={16} style={{ marginRight: '0.5rem' }} /> : <RefreshCw size={16} style={{ marginRight: '0.5rem' }} />}
+                        Refresh Data
                     </button>
                 </div>
 
@@ -43,6 +87,7 @@ export default function PricingPage() {
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
                                 <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Product</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Stock</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Current Price</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Suggested</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Change</th>
@@ -54,13 +99,14 @@ export default function PricingPage() {
                             {products.map((item) => {
                                 const diff = item.suggestedPrice - item.currentPrice;
                                 const percentChange = ((diff / item.currentPrice) * 100).toFixed(1);
-                                const isIncrease = diff > 0;
-                                const isDecrease = diff < 0;
-                                const isNeutral = diff === 0;
+                                const isIncrease = diff > 0.01;
+                                const isDecrease = diff < -0.01;
+                                const isNeutral = !isIncrease && !isDecrease;
 
                                 return (
-                                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                        <td style={{ padding: '1rem', fontWeight: '500' }}>{item.name}</td>
+                                    <tr key={item.item_id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <td style={{ padding: '1rem', fontWeight: '500' }}>{item.name || `Item ${item.item_id}`}</td>
+                                        <td style={{ padding: '1rem' }}>{item.stock}</td>
                                         <td style={{ padding: '1rem' }}>${item.currentPrice.toFixed(2)}</td>
                                         <td style={{ padding: '1rem', fontWeight: '600' }}>${item.suggestedPrice.toFixed(2)}</td>
                                         <td style={{ padding: '1rem' }}>
@@ -78,7 +124,7 @@ export default function PricingPage() {
                                                 <button
                                                     className="btn btn-primary"
                                                     style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
-                                                    onClick={() => applyPrice(item.id)}
+                                                    onClick={() => applyPrice(item.item_id)}
                                                 >
                                                     Apply
                                                 </button>

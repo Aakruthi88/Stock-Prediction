@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, TrendingUp, Package, Tag, ScanLine } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Package, Tag, ScanLine, ShoppingCart } from 'lucide-react';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -11,6 +11,7 @@ const Sidebar = () => {
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Demand Forecasting', href: '/forecasting', icon: TrendingUp },
     { name: 'Inventory & Restock', href: '/inventory', icon: Package },
+    { name: 'Sales', href: '/sales', icon: ShoppingCart },
     { name: 'Dynamic Pricing', href: '/pricing', icon: Tag },
     { name: 'OCR Expiry', href: '/ocr', icon: ScanLine },
   ];

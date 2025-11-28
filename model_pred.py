@@ -86,12 +86,12 @@ def predict():
     for i, item in enumerate(data):
         predictions.append({
             "item_id": item.get("item_id"),
+            "stock":float(stock[i]),
 
             "pred_7d": float(pred_7[i]),
             "pred_30d": float(pred_30[i]),
             "pred_60d": float(pred_60[i]),
             "pred_180d": float(pred_180[i]),
-
             "days_left": float(days_left[i]),
 
             "need_restock_7d": bool(need_7[i]),

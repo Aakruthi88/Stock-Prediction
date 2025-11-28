@@ -1,16 +1,136 @@
 "use client";
 
-import { AlertTriangle, CheckCircle, Package, ArrowRight } from 'lucide-react';
-
-const inventoryData = [
-    { id: 1, name: 'Milk 1L', stock: 12, threshold: 20, status: 'Low', risk: 'High' },
-    { id: 2, name: 'Bread Loaf', stock: 45, threshold: 15, status: 'Good', risk: 'Low' },
-    { id: 3, name: 'Eggs (12pk)', stock: 8, threshold: 10, status: 'Critical', risk: 'Critical' },
-    { id: 4, name: 'Butter 500g', stock: 30, threshold: 10, status: 'Good', risk: 'Low' },
-    { id: 5, name: 'Yogurt Cup', stock: 15, threshold: 25, status: 'Low', risk: 'Medium' },
-];
+import { useState, useEffect } from 'react';
+import { AlertTriangle, ArrowRight } from 'lucide-react';
 
 export default function InventoryPage() {
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [filter, setFilter] = useState('all'); // 'all', '7d', '30d', '60d', '180d'
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+
+    useEffect(() => {
+        setLoading(true);
+        fetch(`/api/model-api?page=${page}&limit=50&filter=${filter}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    setItems(data.predictions);
+                    setTotalPages(data.total_pages);
+                } else {
+                    setError(data.error);
+                }
+                setLoading(false);
+            })
+            .catch(err => {
+                setError(err.message);
+                setLoading(false);
+            });
+    }, [page, filter]);
+
+    const handleFilterChange = (newFilter) => {
+        setFilter(newFilter);
+        setPage(1); // Reset to page 1 when filter changes
+    };
+
+    const handlePageChange = (newPage) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setPage(newPage);
+        }
+    };
+
+    const getRiskLevel = (item) => {
+        if (item.need_restock_7d) return 'Critical';
+        if (item.need_restock_30d) return 'High';
+        if (item.need_restock_60d) return 'Medium';
+        return 'Low';
+    };
+
+    const getStatus = (item) => {
+        if (item.stock === 0) return 'Out of Stock';
+        if (item.need_restock_7d) return 'Low';
+        if (item.need_restock_30d) return 'Moderate';
+        return 'Good';
+    };
+
+    const getRestockQty = (item) => {
+        switch (filter) {
+            case '7d': return item.restock_qty_7d;
+            case '30d': return item.restock_qty_30d;
+            case '60d': return item.restock_qty_60d;
+            case '180d': return item.restock_qty_180d;
+            default: return item.restock_qty_7d;
+        }
+    };
+
+    if (loading && page === 1) {
+        return (
+            <div>
+                <div className="header">
+                    <h1 className="title">Inventory Management</h1>
+                    <p className="subtitle">Monitor stock levels and prevent shortages.</p>
+                </div>
+
+                {/* Skeleton Filter Controls */}
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} style={{ width: '100px', height: '40px', background: 'var(--border)', borderRadius: '8px', opacity: 0.5, animation: 'pulse 1.5s infinite' }}></div>
+                    ))}
+                </div>
+
+                {/* Skeleton Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="card" style={{ height: '200px', background: 'var(--card-bg)', border: '1px solid var(--border)', animation: 'pulse 1.5s infinite' }}>
+                            <div style={{ height: '24px', width: '60%', background: 'var(--border)', marginBottom: '1rem', borderRadius: '4px' }}></div>
+                            <div style={{ height: '16px', width: '40%', background: 'var(--border)', marginBottom: '2rem', borderRadius: '4px' }}></div>
+                            <div style={{ height: '40px', width: '100%', background: 'var(--border)', borderRadius: '8px' }}></div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Skeleton Table */}
+                <div className="card">
+                    <div style={{ height: '32px', width: '200px', background: 'var(--border)', marginBottom: '1.5rem', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                                        <th key={i} style={{ padding: '1rem' }}>
+                                            <div style={{ height: '20px', width: '80%', background: 'var(--border)', borderRadius: '4px', opacity: 0.5 }}></div>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[1, 2, 3, 4, 5].map((row) => (
+                                    <tr key={row} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        {[1, 2, 3, 4, 5, 6].map((col) => (
+                                            <td key={col} style={{ padding: '1rem' }}>
+                                                <div style={{ height: '20px', width: '100%', background: 'var(--border)', borderRadius: '4px', opacity: 0.3, animation: 'pulse 1.5s infinite' }}></div>
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <style jsx>{`
+                    @keyframes pulse {
+                        0% { opacity: 0.6; }
+                        50% { opacity: 0.3; }
+                        100% { opacity: 0.6; }
+                    }
+                `}</style>
+            </div>
+        );
+    }
+    if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
+
     return (
         <div>
             <div className="header">
@@ -18,28 +138,52 @@ export default function InventoryPage() {
                 <p className="subtitle">Monitor stock levels and prevent shortages.</p>
             </div>
 
+            {/* Filter Controls */}
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                {['all', '7d', '30d', '60d', '180d'].map((f) => (
+                    <button
+                        key={f}
+                        onClick={() => handleFilterChange(f)}
+                        className={`btn ${filter === f ? 'btn-primary' : 'btn-outline'}`}
+                        style={{ whiteSpace: 'nowrap' }}
+                    >
+                        {f === 'all' ? 'All Stock' : `Restock in ${f}`}
+                    </button>
+                ))}
+            </div>
+
+            {/* Critical Items Cards (Top 3 from current page) */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                {inventoryData.filter(i => i.risk === 'Critical' || i.risk === 'High').map((item) => (
-                    <div key={item.id} className="card" style={{ borderLeft: '4px solid var(--danger)' }}>
+                {items.slice(0, 3).map((item) => (
+                    <div key={item.item_id} className="card" style={{ borderLeft: '4px solid var(--danger)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                             <div>
-                                <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>{item.name}</h3>
+                                <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>{item.name || `Item ${item.item_id}`}</h3>
                                 <span className="badge badge-danger">Restock Needed</span>
                             </div>
                             <AlertTriangle color="var(--danger)" />
                         </div>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                            Current Stock: <strong>{item.stock}</strong> (Threshold: {item.threshold})
+                            Current Stock: <strong>{item.stock}</strong>
+                            <br />
+                            {filter === 'all' ? (
+                                <>Predicted Demand (7d): {item.pred_7d.toFixed(1)}</>
+                            ) : (
+                                <>Predicted Demand ({filter}): {item[`pred_${filter}`]?.toFixed(1)}</>
+                            )}
                         </p>
                         <button className="btn btn-primary" style={{ width: '100%' }}>
-                            Order Restock <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} />
+                            Order Restock ({getRestockQty(item).toFixed(0)}) <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} />
                         </button>
                     </div>
                 ))}
             </div>
 
+            {/* Table */}
             <div className="card">
-                <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem' }}>All Products</h3>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem' }}>
+                    {filter === 'all' ? 'All Products' : `Products Requiring Restock within ${filter}`}
+                </h3>
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                         <thead>
@@ -48,22 +192,26 @@ export default function InventoryPage() {
                                 <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Stock Level</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Status</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Risk Level</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Restock Qty ({filter === 'all' ? '7d' : filter})</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {inventoryData.map((item) => (
-                                <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                    <td style={{ padding: '1rem', fontWeight: '500' }}>{item.name}</td>
+                            {items.map((item) => (
+                                <tr key={item.item_id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <td style={{ padding: '1rem', fontWeight: '500' }}>{item.name || `Item ${item.item_id}`}</td>
                                     <td style={{ padding: '1rem' }}>{item.stock}</td>
                                     <td style={{ padding: '1rem' }}>
-                                        <span className={`badge ${item.status === 'Critical' ? 'badge-danger' :
-                                                item.status === 'Low' ? 'badge-warning' : 'badge-success'
+                                        <span className={`badge ${getStatus(item) === 'Low' || getStatus(item) === 'Out of Stock' ? 'badge-danger' :
+                                            getStatus(item) === 'Moderate' ? 'badge-warning' : 'badge-success'
                                             }`}>
-                                            {item.status}
+                                            {getStatus(item)}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>{item.risk}</td>
+                                    <td style={{ padding: '1rem' }}>{getRiskLevel(item)}</td>
+                                    <td style={{ padding: '1rem' }}>
+                                        {getRestockQty(item).toFixed(0)}
+                                    </td>
                                     <td style={{ padding: '1rem' }}>
                                         <button className="btn btn-outline" style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>
                                             Details
@@ -73,6 +221,27 @@ export default function InventoryPage() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Pagination Controls */}
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
+                    <button
+                        className="btn btn-outline"
+                        onClick={() => handlePageChange(page - 1)}
+                        disabled={page === 1}
+                    >
+                        Previous
+                    </button>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                        Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+                    </span>
+                    <button
+                        className="btn btn-outline"
+                        onClick={() => handlePageChange(page + 1)}
+                        disabled={page === totalPages}
+                    >
+                        Next
+                    </button>
                 </div>
             </div>
         </div>
