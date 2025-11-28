@@ -57,9 +57,47 @@ export default function ForecastingPage() {
         setSelectedItem(item);
         setSearchQuery(item.name || `Item ${item.item_id}`);
         setIsOpen(false);
+        console.log(item)
+        console.log(item.item_popularity_score);
     };
 
-    if (loading) return <div className="p-8 text-center">Loading forecasting data...</div>;
+    if (loading) return (
+        <div>
+            <div className="header">
+                <h1 className="title">Demand Forecasting</h1>
+                <p className="subtitle">Predict future demand to optimize inventory.</p>
+            </div>
+
+            <div className="card" style={{ marginBottom: '2rem' }}>
+                <div style={{ marginBottom: '2rem' }}>
+                    <div className="skeleton" style={{ height: '14px', width: '60px', marginBottom: '0.5rem' }}></div>
+                    <div className="skeleton" style={{ height: '40px', width: '100%' }}></div>
+                </div>
+
+                <div style={{ height: '400px', width: '100%', position: 'relative' }}>
+                    {/* Skeleton Graph Axis */}
+                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        {[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton" style={{ height: '10px', width: '100%' }}></div>)}
+                    </div>
+                    {/* Skeleton Graph Area */}
+                    <div className="skeleton" style={{ marginLeft: '50px', height: '100%', width: 'calc(100% - 50px)', borderRadius: '4px' }}></div>
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                {[1, 2].map((i) => (
+                    <div key={i} className="card">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div className="skeleton skeleton-circle"></div>
+                            <div className="skeleton" style={{ height: '20px', width: '150px' }}></div>
+                        </div>
+                        <div className="skeleton" style={{ height: '14px', width: '100%', marginBottom: '0.5rem' }}></div>
+                        <div className="skeleton" style={{ height: '14px', width: '80%' }}></div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
     if (!selectedItem) return <div className="p-8 text-center">No data available.</div>;
 
     // Prepare chart data: Cumulative Demand over time
@@ -97,7 +135,10 @@ export default function ForecastingPage() {
                                     setIsOpen(true);
                                     setDisplayLimit(20);
                                 }}
-                                onClick={() => setIsOpen(true)}
+                                onClick={() => {
+                                    setIsOpen(true);
+                                    setSearchQuery(''); // Clear query on click to show all or allow fresh search
+                                }}
                                 style={{ paddingRight: '2.5rem', width: '100%' }}
                             />
                             <div
@@ -180,7 +221,9 @@ export default function ForecastingPage() {
                         <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Demand Velocity</h3>
                     </div>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                        Predicted demand for <strong>{selectedItem.name || selectedItem.item_id}</strong> is approximately <strong>{(selectedItem.pred_30d / 30).toFixed(1)}</strong> units/day over the next month.
+                        Predicted demand for <strong>{selectedItem.name || selectedItem.item_id}</strong> is approximately <strong>{ Math.round(selectedItem.daily_demand_final !== undefined ? selectedItem.daily_demand_final : selectedItem.pred_30d / 30
+) }
+</strong> units/day over the next month.
                     </p>
                 </div>
 

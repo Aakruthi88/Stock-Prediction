@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 import redis from "@/lib/redis";
 
-// Simple in-memory fallback
-let memoryCache = {
-    data: null,
-    timestamp: 0
-};
+// Simple in-memory fallback (using global to persist across hot reloads in dev)
+if (!global.inventoryCache) {
+    global.inventoryCache = {
+        data: null,
+        timestamp: 0
+    };
+}
+let memoryCache = global.inventoryCache;
+
 const CACHE_TTL = 300 * 1000; // 5 minutes
 
 export async function GET(request) {
@@ -30,7 +34,7 @@ export async function GET(request) {
         }
 
         let mergedData = [];
-        const CACHE_KEY = 'inventory_predictions_full';
+        const CACHE_KEY = 'inventory_predictions_v2';
 
         // 1. Try to get from Redis
         try {
@@ -80,6 +84,22 @@ export async function GET(request) {
                 from += batchSize;
             }
 
+            // Fetch demand features
+            const { data: demandFeatures, error: demandError } = await supabase
+                .from('demand_features')
+                .select('*');
+
+            if (!demandError && demandFeatures) {
+                // Merge demand features into items
+                const demandMap = new Map(demandFeatures.map(df => [df.item_id, df]));
+                allItems = allItems.map(item => {
+                    const features = demandMap.get(item.item_id) || {};
+                    return { ...item, ...features };
+                });
+            } else {
+                console.warn("Could not fetch demand features:", demandError?.message);
+            }
+
             console.log("Total fetched items:", allItems.length);
 
             // Send to Flask API
@@ -100,10 +120,35 @@ export async function GET(request) {
             const predictions = await flaskRes.json();
 
             // Merge predictions with original item data
-            mergedData = allItems.map((item, index) => ({
-                ...item,
-                ...predictions[index]
-            }));
+            mergedData = allItems.map((item, index) => {
+                const prediction = predictions[index];
+                // Ensure stock is consistent
+                const stock = item.stock_level !== undefined ? item.stock_level : item.stock;
+
+                // Calculate days_left
+                // Priority: daily_demand_final -> pred_30d / 30 -> 0.1 (to avoid div by 0)
+                let dailyDemand = 0;
+                if (item.daily_demand_final !== undefined && item.daily_demand_final > 0) {
+                    dailyDemand = item.daily_demand_final;
+                } else if (prediction && prediction.pred_30d > 0) {
+                    dailyDemand = prediction.pred_30d / 30;
+                }
+
+                let daysLeft = 9999;
+                if (dailyDemand > 0) {
+                    daysLeft = stock / dailyDemand;
+                }
+
+
+
+                return {
+                    ...item,
+                    ...prediction,
+                    stock: stock, // Normalize to 'stock' for frontend
+                    stock_level: stock, // Keep 'stock_level' if needed
+                    days_left: daysLeft
+                };
+            });
 
             // Save to Redis (TTL 5 minutes)
             try {
@@ -113,10 +158,11 @@ export async function GET(request) {
             }
 
             // Save to Memory Cache
-            memoryCache = {
+            global.inventoryCache = {
                 data: mergedData,
                 timestamp: Date.now()
             };
+            memoryCache = global.inventoryCache;
         }
 
         // 1. Filter

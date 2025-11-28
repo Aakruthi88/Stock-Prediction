@@ -11,8 +11,6 @@ export default function SalesPage() {
 
     // Form State
     const [selectedItem, setSelectedItem] = useState(null);
-    const [customerName, setCustomerName] = useState('');
-    const [customerPhone, setCustomerPhone] = useState('');
     const [quantity, setQuantity] = useState(1);
 
     // Search & Dropdown State
@@ -67,7 +65,7 @@ export default function SalesPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!selectedItem || !customerName || !customerPhone || quantity < 1) {
+        if (!selectedItem || quantity < 1) {
             setMessage({ type: 'error', text: 'Please fill in all fields correctly.' });
             return;
         }
@@ -82,8 +80,6 @@ export default function SalesPage() {
                 body: JSON.stringify({
                     item_id: selectedItem.item_id,
                     item_name: selectedItem.name,
-                    customer_name: customerName,
-                    customer_phone: customerPhone,
                     quantity: parseInt(quantity),
                     price: selectedItem.price || 0 // Assuming price might be in item data, else 0
                 }),
@@ -93,11 +89,20 @@ export default function SalesPage() {
 
             if (data.success) {
                 setMessage({ type: 'success', text: 'Sale recorded successfully!' });
+
+                // Update local state with new stock
+                if (data.new_stock !== undefined && data.new_stock !== -1) {
+                    setItems(prevItems => prevItems.map(item => {
+                        if (item.item_id === selectedItem.item_id) {
+                            return { ...item, stock: data.new_stock, stock_level: data.new_stock };
+                        }
+                        return item;
+                    }));
+                }
+
                 // Reset form
                 setSelectedItem(null);
                 setSearchQuery('');
-                setCustomerName('');
-                setCustomerPhone('');
                 setQuantity(1);
             } else {
                 setMessage({ type: 'error', text: data.error || 'Failed to record sale.' });
@@ -109,7 +114,34 @@ export default function SalesPage() {
         }
     };
 
-    if (loading) return <div className="p-8 text-center">Loading products...</div>;
+    if (loading) return (
+        <div>
+            <div className="header">
+                <h1 className="title">Record New Sale</h1>
+                <p className="subtitle">Enter customer details and purchased items.</p>
+            </div>
+            <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <div className="skeleton" style={{ height: '24px', width: '30%', marginBottom: '1.5rem' }}></div>
+                <div className="skeleton" style={{ height: '40px', width: '100%', marginBottom: '1.5rem' }}></div>
+
+                <div className="skeleton" style={{ height: '24px', width: '30%', marginBottom: '1.5rem' }}></div>
+                <div className="skeleton" style={{ height: '40px', width: '100%', marginBottom: '1.5rem' }}></div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                    <div>
+                        <div className="skeleton" style={{ height: '24px', width: '50%', marginBottom: '0.5rem' }}></div>
+                        <div className="skeleton" style={{ height: '40px', width: '100%' }}></div>
+                    </div>
+                    <div>
+                        <div className="skeleton" style={{ height: '24px', width: '50%', marginBottom: '0.5rem' }}></div>
+                        <div className="skeleton" style={{ height: '40px', width: '100%' }}></div>
+                    </div>
+                </div>
+
+                <div className="skeleton" style={{ height: '45px', width: '100%' }}></div>
+            </div>
+        </div>
+    );
 
     return (
         <div>
@@ -181,7 +213,7 @@ export default function SalesPage() {
                                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = (selectedItem && (selectedItem.item_id === item.item_id)) ? '#f3f4f6' : 'transparent'}
                                             >
                                                 <div style={{ fontWeight: '500' }}>{item.name || `Item ${item.item_id}`}</div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Stock: {item.stock}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Stock: {item.stock_level !== undefined ? item.stock_level : item.stock}</div>
                                             </div>
                                         ))
                                     ) : (
@@ -210,37 +242,7 @@ export default function SalesPage() {
                         </div>
                     </div>
 
-                    {/* Customer Details */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
-                        <div>
-                            <label className="label" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Customer Name</label>
-                            <div style={{ position: 'relative' }}>
-                                <User size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input
-                                    type="text"
-                                    className="input"
-                                    placeholder="John Doe"
-                                    value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)}
-                                    style={{ paddingLeft: '2.5rem', width: '100%' }}
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="label" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Phone Number</label>
-                            <div style={{ position: 'relative' }}>
-                                <Phone size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input
-                                    type="tel"
-                                    className="input"
-                                    placeholder="+1 234 567 890"
-                                    value={customerPhone}
-                                    onChange={(e) => setCustomerPhone(e.target.value)}
-                                    style={{ paddingLeft: '2.5rem', width: '100%' }}
-                                />
-                            </div>
-                        </div>
-                    </div>
+
 
                     {/* Message Alert */}
                     {message && (

@@ -104,28 +104,6 @@ export default function OCRPage() {
                         )}
                     </div>
 
-                    <div style={{ marginTop: '1.5rem' }}>
-                        <button
-                            className="btn btn-primary"
-                            style={{ width: '100%' }}
-                            disabled={!image || loading}
-                            onClick={processImage}
-                        >
-                            {loading ? <><Loader2 className="animate-spin" size={20} style={{ marginRight: '0.5rem' }} /> Processing...</> : <><ScanLine size={20} style={{ marginRight: '0.5rem' }} /> Extract Expiry Date</>}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="card">
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem' }}>Extraction Results</h3>
-
-                    {!result && !error && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                            <ScanLine size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                            <p>Results will appear here after processing.</p>
-                        </div>
-                    )}
-
                     {error && (
                         <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '0.5rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                             <AlertCircle size={20} style={{ flexShrink: 0 }} />

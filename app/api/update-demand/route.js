@@ -5,9 +5,10 @@ import { supabase } from "@/lib/supabaseClient";
 export async function POST(request) {
     try {
         // 1. Fetch all items to ensure we update even those with 0 sales
+        // We fetch all columns to ensure we can satisfy NOT NULL constraints during upsert
         const { data: allItems, error: itemsError } = await supabase
             .from('items')
-            .select('item_id');
+            .select('*');
 
         if (itemsError) throw itemsError;
 
@@ -59,8 +60,13 @@ export async function POST(request) {
             const rolling30d = sumQty(30);
             const rolling60d = sumQty(60);
 
-            // Daily Demand Final (Average over 30 days)
-            const daily_demand_final = rolling30d / 30;
+            // Daily Demand Final (Priority: 30d -> 7d -> 0)
+            let daily_demand_final = 0;
+            if (rolling30d > 0) {
+                daily_demand_final = rolling30d / 30;
+            } else if (rolling7d > 0) {
+                daily_demand_final = rolling7d / 7;
+            }
 
             // Standard Deviation (over last 30 days)
             let sumSqDiff = 0;
@@ -95,13 +101,42 @@ export async function POST(request) {
 
             if (upsertError) throw upsertError;
 
-            // 6. Update 'demand' in 'items' table
-            // We map daily_demand_final to the 'demand' column in items.
-            // We use upsert with just item_id and demand.
-            const itemUpdates = updates.map(u => ({
-                item_id: u.item_id,
-                demand: u.daily_demand_final
-            }));
+            // 6. Update 'item_popularity_score' in 'items' table
+            // Normalize score between 0 and 1
+            const maxDemand = Math.max(...updates.map(u => u.daily_demand_final), 1); // Avoid div by 0
+
+            // Calculate Mean Popularity Score for new entries
+            const validScores = allItems
+                .map(i => i.item_popularity_score)
+                .filter(s => s !== null && s !== undefined);
+            const globalMeanScore = validScores.length > 0
+                ? validScores.reduce((a, b) => a + b, 0) / validScores.length
+                : 0.5; // Default if no data at all
+
+            const itemUpdates = updates.map(u => {
+                const originalItem = allItems.find(i => i.item_id === u.item_id);
+                let newScore = originalItem.item_popularity_score;
+
+                // Update Logic:
+                // 1. If we have 30d or 7d data, calculate new score
+                // 2. If no data (rolling_30d == 0 AND rolling_7d == 0):
+                //    - If new entry (score is null), set to global mean
+                //    - If existing entry, keep current score
+
+                if (u.rolling_30d > 0 || u.rolling_7d > 0) {
+                    newScore = u.daily_demand_final / maxDemand;
+                } else {
+                    // No recent data
+                    if (newScore === null || newScore === undefined) {
+                        newScore = globalMeanScore;
+                    }
+                }
+
+                return {
+                    ...originalItem,
+                    item_popularity_score: newScore
+                };
+            });
 
             const { error: itemsUpdateError } = await supabase
                 .from('items')

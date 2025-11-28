@@ -26,11 +26,25 @@ export default function PricingPage() {
                         let elasticity = "Medium";
 
                         // Pricing Logic
+                        // 1. High Demand & Low Stock -> Increase Price
                         if (item.need_restock_7d) {
-                            suggestedPrice = currentPrice * 1.10; // +10%
-                            reason = "High demand, low stock availability";
+                            suggestedPrice = currentPrice * 1.15; // +15%
+                            reason = "Critical stock levels with high demand";
                             elasticity = "Low";
-                        } else if (item.days_left > 60) {
+                        }
+                        else if (item.need_restock_30d) {
+                            suggestedPrice = currentPrice * 1.10; // +10%
+                            reason = "Critical stock levels with high demand";
+                            elasticity = "Low";
+                        }
+                        // 2. High Demand Velocity (regardless of stock) -> Slight Increase
+                        else if (item.daily_demand_final > 2 || (item.pred_30d / 30) > 2) {
+                            suggestedPrice = currentPrice * 1.05; // +5%
+                            reason = "Strong sales velocity";
+                            elasticity = "Medium";
+                        }
+                        // 3. Excess Inventory -> Decrease Price
+                        else if (item.days_left > 60) {
                             suggestedPrice = currentPrice * 0.90; // -10%
                             reason = "Excess inventory, clearance recommended";
                             elasticity = "High";
@@ -44,6 +58,14 @@ export default function PricingPage() {
                             elasticity
                         };
                     });
+
+                    // Sort by price variation (descending) - Highest increase first
+                    processed.sort((a, b) => {
+                        const variationA = (a.suggestedPrice - a.currentPrice) / a.currentPrice;
+                        const variationB = (b.suggestedPrice - b.currentPrice) / b.currentPrice;
+                        return variationB - variationA;
+                    });
+
                     setProducts(processed);
                 }
                 setLoading(false);
@@ -64,7 +86,44 @@ export default function PricingPage() {
         // Here you would typically make an API call to update the price in the DB
     };
 
-    if (loading) return <div className="p-8 text-center">Loading pricing data...</div>;
+    if (loading) return (
+        <div>
+            <div className="header">
+                <h1 className="title">Dynamic Pricing</h1>
+                <p className="subtitle">Optimize prices based on demand and competition.</p>
+            </div>
+            <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div className="skeleton" style={{ height: '28px', width: '250px' }}></div>
+                    <div className="skeleton" style={{ height: '36px', width: '120px' }}></div>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                                    <th key={i} style={{ padding: '1rem' }}>
+                                        <div className="skeleton" style={{ height: '20px', width: '80%' }}></div>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {[1, 2, 3, 4, 5].map((row) => (
+                                <tr key={row} style={{ borderBottom: '1px solid var(--border)' }}>
+                                    {[1, 2, 3, 4, 5, 6, 7].map((col) => (
+                                        <td key={col} style={{ padding: '1rem' }}>
+                                            <div className="skeleton" style={{ height: '20px', width: '100%' }}></div>
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div>
@@ -106,7 +165,7 @@ export default function PricingPage() {
                                 return (
                                     <tr key={item.item_id} style={{ borderBottom: '1px solid var(--border)' }}>
                                         <td style={{ padding: '1rem', fontWeight: '500' }}>{item.name || `Item ${item.item_id}`}</td>
-                                        <td style={{ padding: '1rem' }}>{item.stock}</td>
+                                        <td style={{ padding: '1rem' }}>{item.stock_level || item.stock}</td>
                                         <td style={{ padding: '1rem' }}>${item.currentPrice.toFixed(2)}</td>
                                         <td style={{ padding: '1rem', fontWeight: '600' }}>${item.suggestedPrice.toFixed(2)}</td>
                                         <td style={{ padding: '1rem' }}>

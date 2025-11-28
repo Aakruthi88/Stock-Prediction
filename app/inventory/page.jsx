@@ -49,7 +49,8 @@ export default function InventoryPage() {
     };
 
     const getStatus = (item) => {
-        if (item.stock === 0) return 'Out of Stock';
+        const stock = item.stock_level !== undefined ? item.stock_level : item.stock;
+        if (stock === 0) return 'Out of Stock';
         if (item.need_restock_7d) return 'Low';
         if (item.need_restock_30d) return 'Moderate';
         return 'Good';
@@ -76,31 +77,31 @@ export default function InventoryPage() {
                 {/* Skeleton Filter Controls */}
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
                     {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} style={{ width: '100px', height: '40px', background: 'var(--border)', borderRadius: '8px', opacity: 0.5, animation: 'pulse 1.5s infinite' }}></div>
+                        <div key={i} className="skeleton" style={{ width: '100px', height: '40px', borderRadius: '8px' }}></div>
                     ))}
                 </div>
 
                 {/* Skeleton Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="card" style={{ height: '200px', background: 'var(--card-bg)', border: '1px solid var(--border)', animation: 'pulse 1.5s infinite' }}>
-                            <div style={{ height: '24px', width: '60%', background: 'var(--border)', marginBottom: '1rem', borderRadius: '4px' }}></div>
-                            <div style={{ height: '16px', width: '40%', background: 'var(--border)', marginBottom: '2rem', borderRadius: '4px' }}></div>
-                            <div style={{ height: '40px', width: '100%', background: 'var(--border)', borderRadius: '8px' }}></div>
+                        <div key={i} className="card" style={{ height: '200px' }}>
+                            <div className="skeleton" style={{ height: '24px', width: '60%', marginBottom: '1rem' }}></div>
+                            <div className="skeleton" style={{ height: '16px', width: '40%', marginBottom: '2rem' }}></div>
+                            <div className="skeleton" style={{ height: '40px', width: '100%' }}></div>
                         </div>
                     ))}
                 </div>
 
                 {/* Skeleton Table */}
                 <div className="card">
-                    <div style={{ height: '32px', width: '200px', background: 'var(--border)', marginBottom: '1.5rem', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
+                    <div className="skeleton" style={{ height: '32px', width: '200px', marginBottom: '1.5rem' }}></div>
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                     {[1, 2, 3, 4, 5, 6].map((i) => (
                                         <th key={i} style={{ padding: '1rem' }}>
-                                            <div style={{ height: '20px', width: '80%', background: 'var(--border)', borderRadius: '4px', opacity: 0.5 }}></div>
+                                            <div className="skeleton" style={{ height: '20px', width: '80%' }}></div>
                                         </th>
                                     ))}
                                 </tr>
@@ -110,7 +111,7 @@ export default function InventoryPage() {
                                     <tr key={row} style={{ borderBottom: '1px solid var(--border)' }}>
                                         {[1, 2, 3, 4, 5, 6].map((col) => (
                                             <td key={col} style={{ padding: '1rem' }}>
-                                                <div style={{ height: '20px', width: '100%', background: 'var(--border)', borderRadius: '4px', opacity: 0.3, animation: 'pulse 1.5s infinite' }}></div>
+                                                <div className="skeleton" style={{ height: '20px', width: '100%' }}></div>
                                             </td>
                                         ))}
                                     </tr>
@@ -119,13 +120,6 @@ export default function InventoryPage() {
                         </table>
                     </div>
                 </div>
-                <style jsx>{`
-                    @keyframes pulse {
-                        0% { opacity: 0.6; }
-                        50% { opacity: 0.3; }
-                        100% { opacity: 0.6; }
-                    }
-                `}</style>
             </div>
         );
     }
@@ -164,7 +158,7 @@ export default function InventoryPage() {
                             <AlertTriangle color="var(--danger)" />
                         </div>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                            Current Stock: <strong>{item.stock}</strong>
+                            Current Stock: <strong>{item.stock_level || item.stock}</strong>
                             <br />
                             {filter === 'all' ? (
                                 <>Predicted Demand (7d): {item.pred_7d.toFixed(1)}</>
@@ -200,7 +194,7 @@ export default function InventoryPage() {
                             {items.map((item) => (
                                 <tr key={item.item_id} style={{ borderBottom: '1px solid var(--border)' }}>
                                     <td style={{ padding: '1rem', fontWeight: '500' }}>{item.name || `Item ${item.item_id}`}</td>
-                                    <td style={{ padding: '1rem' }}>{item.stock}</td>
+                                    <td style={{ padding: '1rem' }}>{item.stock_level || item.stock}</td>
                                     <td style={{ padding: '1rem' }}>
                                         <span className={`badge ${getStatus(item) === 'Low' || getStatus(item) === 'Out of Stock' ? 'badge-danger' :
                                             getStatus(item) === 'Moderate' ? 'badge-warning' : 'badge-success'

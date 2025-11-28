@@ -65,6 +65,35 @@ export default function Home() {
       });
   }, []);
 
+  if (loading) {
+    return (
+      <div>
+        <div className="header">
+          <div className="skeleton" style={{ height: '32px', width: '250px', marginBottom: '0.5rem' }}></div>
+          <div className="skeleton" style={{ height: '20px', width: '180px' }}></div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div className="skeleton skeleton-circle"></div>
+              <div style={{ flex: 1 }}>
+                <div className="skeleton" style={{ height: '14px', width: '60%', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ height: '28px', width: '40%', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ height: '12px', width: '30%' }}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="card">
+          <div className="skeleton" style={{ height: '24px', width: '150px', marginBottom: '1rem' }}></div>
+          <div className="skeleton" style={{ height: '16px', width: '100%' }}></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="header">
@@ -90,11 +119,7 @@ export default function Home() {
               </div>
               <div>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{stat.title}</p>
-                {loading ? (
-                  <div style={{ height: '2rem', width: '4rem', background: '#eee', borderRadius: '4px', margin: '0.5rem 0' }} />
-                ) : (
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: '700' }}>{stat.value}</h3>
-                )}
+                <h3 style={{ fontSize: '1.5rem', fontWeight: '700' }}>{stat.value}</h3>
                 <span style={{ fontSize: '0.75rem', color: stat.change.includes('+') || stat.change.includes('Next') || stat.change.includes('In') ? 'var(--text-muted)' : 'var(--danger)' }}>
                   {stat.change}
                 </span>
@@ -107,7 +132,7 @@ export default function Home() {
       <div className="card">
         <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>Recent Activity</h3>
         <p style={{ color: 'var(--text-muted)' }}>
-          {loading ? "Loading system data..." : "System updated with latest inventory predictions."}
+          System updated with latest inventory predictions.
         </p>
       </div>
     </div>
