@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useRef } from 'react';
-import Tesseract from 'tesseract.js';
-import { Upload, ScanLine, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, Check, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function OCRPage() {
     const [image, setImage] = useState(null);
+    const [imageFile, setImageFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
@@ -14,52 +14,44 @@ export default function OCRPage() {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            setImage(URL.createObjectURL(file));
+            setImage(URL.createObjectURL(file));   // Preview
+            setImageFile(file);                    // File upload
             setResult(null);
             setError(null);
         }
     };
 
-    const extractDate = (text) => {
-        // Regex to find dates in various formats (DD/MM/YYYY, MM/YYYY, YYYY-MM-DD, etc.)
-        const datePattern = /\b(\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{2,4}[./-]\d{1,2}[./-]\d{1,2}|\d{1,2}\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s\d{2,4})\b/gi;
-        const matches = text.match(datePattern);
-        return matches ? matches[0] : null;
-    };
-
     const processImage = async () => {
-        if (!image) return;
+        if (!imageFile) return;
 
         setLoading(true);
         setError(null);
+        setResult(null);
+
+        const formData = new FormData();
+        formData.append("image", imageFile);
 
         try {
-            const { data: { text } } = await Tesseract.recognize(
-                image,
-                'eng',
-                { logger: m => console.log(m) }
-            );
+            const res = await fetch("http://localhost:5000/extract", {
+                method: "POST",
+                body: formData
+            });
 
-            const extractedDate = extractDate(text);
+            const data = await res.json();
 
-            if (extractedDate) {
-                setResult({
-                    text: text,
-                    date: extractedDate,
-                    status: 'Success'
-                });
-            } else {
-                setResult({
-                    text: text,
-                    date: null,
-                    status: 'No Date Found'
-                });
-                setError("Could not detect a valid expiry date format. Please ensure the image is clear.");
+            if (!data.success) {
+                setError(data.error || "Failed to extract text.");
+                return;
             }
+
+            setResult({
+                text: data.extracted_text,
+                status: "Success",
+            });
 
         } catch (err) {
             console.error(err);
-            setError("Failed to process image. Please try again.");
+            setError("Could not connect to backend.");
         } finally {
             setLoading(false);
         }
@@ -93,6 +85,7 @@ export default function OCRPage() {
                             accept="image/*"
                             style={{ display: 'none' }}
                         />
+
                         {image ? (
                             <img src={image} alt="Preview" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '0.5rem' }} />
                         ) : (
@@ -104,35 +97,51 @@ export default function OCRPage() {
                         )}
                     </div>
 
+                    {/* Extract Button */}
+                    {image && (
+                        <button
+                            onClick={processImage}
+                            disabled={loading}
+                            style={{
+                                marginTop: '1.5rem',
+                                width: '100%',
+                                padding: '0.8rem',
+                                backgroundColor: 'var(--primary)',
+                                color: 'white',
+                                borderRadius: '0.5rem',
+                                fontWeight: 'bold',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                            }}
+                        >
+                            {loading ? <Loader2 size={20} className="animate-spin" /> : "Extract Text"}
+                        </button>
+                    )}
+
+                    {/* ERROR */}
                     {error && (
-                        <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '0.5rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                            <AlertCircle size={20} style={{ flexShrink: 0 }} />
+                        <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '0.5rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginTop: '1rem' }}>
+                            <AlertCircle size={20} />
                             <p>{error}</p>
                         </div>
                     )}
 
+                    {/* RESULT */}
                     {result && (
-                        <div>
+                        <div style={{ marginTop: '2rem' }}>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Detected Expiry Date</label>
-                                <div style={{ fontSize: '1.5rem', fontWeight: '700', color: result.date ? 'var(--primary)' : 'var(--text-muted)' }}>
-                                    {result.date || "Not Found"}
+                                <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Extracted Text</label>
+                                <div style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--primary)' }}>
+                                    {result.text || "No Text Found"}
                                 </div>
                             </div>
 
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Raw Text Extracted</label>
-                                <div style={{ padding: '1rem', backgroundColor: 'var(--bg-soft)', borderRadius: '0.5rem', fontSize: '0.875rem', maxHeight: '200px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
-                                    {result.text}
-                                </div>
+                            <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Check size={20} />
+                                <span>Text extracted successfully!</span>
                             </div>
-
-                            {result.date && (
-                                <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Check size={20} />
-                                    <span>Date successfully extracted!</span>
-                                </div>
-                            )}
                         </div>
                     )}
                 </div>
