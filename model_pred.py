@@ -2,16 +2,69 @@ from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
 import numpy as np
+from flask_cors import CORS
+
+# OCR imports
+from PIL import Image
+import easyocr
+import io
+import base64
 
 app = Flask(__name__)
+CORS(app)
 
 # ================================
-# LOAD MODELS & TRAIN COLUMNS
+# LOAD OCR MODEL
 # ================================
+print("Loading EasyOCR...")
+reader = easyocr.Reader(['en'], gpu=False)
+print("EasyOCR Loaded!")
+
+# ================================
+# LOAD ML MODELS & TRAIN COLUMNS
+# ================================
+print("Loading ML Models...")
 models = joblib.load("./demand_forecast_models.pkl")
 train_columns = joblib.load("./train_columns.pkl")
+print("ML Models Loaded!")
 
 
+# ==========================================================
+# ===================== OCR ROUTE ==========================
+# ==========================================================
+@app.route("/extract", methods=["POST"])
+def extract_text():
+    if "image" not in request.files:
+        return jsonify({"error": "No image provided"}), 400
+
+    file = request.files["image"]
+
+    try:
+        image = Image.open(file.stream)
+
+        # OCR extraction
+        img_array = np.array(image)
+        results = reader.readtext(img_array, detail=0)
+        extracted_text = "\n".join(results)
+
+        # Convert image to base64 for preview
+        buf = io.BytesIO()
+        image.save(buf, format="PNG")
+        img_b64 = base64.b64encode(buf.getvalue()).decode()
+
+        return jsonify({
+            "success": True,
+            "extracted_text": extracted_text,
+            "image_preview": f"data:image/png;base64,{img_b64}"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================================
+# =================== ORIGINAL ML ROUTE ====================
+# ==========================================================
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.json
@@ -59,7 +112,7 @@ def predict():
     print("completed5")
 
     # ==============================================
-    # 6️⃣ Restock logic (vectorized)
+    # 6️⃣ RESTOCK LOGIC (vectorized)
     # ==============================================
     stock = np.array([item.get("stock_level", 0) for item in data])
     daily_demand = np.array([item.get("daily_demand", 0) for item in data])
@@ -79,7 +132,7 @@ def predict():
     print("completed6")
 
     # ==============================================
-    # 7️⃣ Build response
+    # 7️⃣ BUILD RESPONSE
     # ==============================================
     predictions = []
 
@@ -110,5 +163,12 @@ def predict():
     return jsonify(predictions)
 
 
+# ==========================================================
+# ==================== START SERVER ========================
+# ==========================================================
 if __name__ == "__main__":
+    print("\n🚀 Unified Backend (OCR + ML) running at http://localhost:5000")
+    print("➡ /extract → OCR")
+    print("➡ /predict → ML Prediction\n")
+
     app.run(host="0.0.0.0", port=5000)
