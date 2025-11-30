@@ -1,3 +1,6 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
@@ -17,7 +20,7 @@ CORS(app)
 # LOAD OCR MODEL
 # ================================
 print("Loading EasyOCR...")
-reader = easyocr.Reader(['en'], gpu=False)
+reader = easyocr.Reader(['en'], gpu=True)
 print("EasyOCR Loaded!")
 
 # ================================

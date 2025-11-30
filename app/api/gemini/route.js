@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Add GET method for testing
 export async function GET() {
-  return Response.json({ 
+  return Response.json({
     status: "API route is working!",
     message: "Send POST request with {text: 'your text'} to use this endpoint"
   });
@@ -10,7 +10,7 @@ export async function GET() {
 
 export async function POST(req) {
   console.log("🔥 Gemini API POST request received");
-  
+
   try {
     const body = await req.json();
     const { text } = body;
@@ -22,15 +22,14 @@ export async function POST(req) {
 
     if (!process.env.GEMINI_API_KEY) {
       console.error("❌ GEMINI_API_KEY not found in environment");
-      return Response.json({ 
-        error: "API key not configured. Please add GEMINI_API_KEY to .env.local" 
+      return Response.json({
+        error: "API key not configured. Please add GEMINI_API_KEY to .env.local"
       }, { status: 500 });
     }
 
     console.log("✅ Text received:", text.substring(0, 100));
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `You are analyzing OCR-extracted text from a product label or package.
 
@@ -44,11 +43,29 @@ OCR TEXT:
 ${text}
 
 Respond ONLY in this format:
-Product Name: [name]
-Expiry Date: [date]`;
+[name],[expiry_date(in dd/mm/yyyy format)]`;
 
     console.log("🤖 Calling Gemini API...");
-    const result = await model.generateContent(prompt);
+
+    let result;
+    try {
+      // Try gemini-2.0-flash (found in available models list)
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      result = await model.generateContent(prompt);
+    } catch (error) {
+      console.warn("⚠️ gemini-2.0-flash failed, attempting fallback to gemini-flash-latest...");
+      console.error("Original Error:", error.message);
+
+      try {
+        // Fallback to generic alias
+        const modelFallback = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        result = await modelFallback.generateContent(prompt);
+      } catch (fallbackError) {
+        console.error("❌ Fallback model also failed:", fallbackError.message);
+        throw fallbackError; // Re-throw to be caught by outer block
+      }
+    }
+
     const output = result.response.text();
 
     console.log("✅ Gemini response received:", output);
@@ -57,9 +74,9 @@ Expiry Date: [date]`;
 
   } catch (err) {
     console.error("❌ Gemini API Error:", err);
-    return Response.json({ 
+    return Response.json({
       error: "Failed to process with Gemini AI",
-      details: err.message 
+      details: err.message
     }, { status: 500 });
   }
 }

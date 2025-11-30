@@ -11,6 +11,10 @@ export default function OCRPage() {
     const [error, setError] = useState(null);
     const fileInputRef = useRef(null);
 
+    const [productName, setProductName] = useState('');
+    const [expiryDate, setExpiryDate] = useState('');
+    const [showForm, setShowForm] = useState(false);
+
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -18,6 +22,9 @@ export default function OCRPage() {
             setImageFile(file);                    // File upload
             setResult(null);
             setError(null);
+            setShowForm(false);
+            setProductName('');
+            setExpiryDate('');
         }
     };
 
@@ -27,6 +34,7 @@ export default function OCRPage() {
         setLoading(true);
         setError(null);
         setResult(null);
+        setShowForm(false);
 
         const formData = new FormData();
         formData.append("image", imageFile);
@@ -44,8 +52,36 @@ export default function OCRPage() {
                 return;
             }
 
+            let geminiAnalysis = null;
+            if (data.extracted_text) {
+                try {
+                    const geminiRes = await fetch("/api/gemini", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ text: data.extracted_text })
+                    });
+                    const geminiData = await geminiRes.json();
+                    if (geminiData.result) {
+                        geminiAnalysis = geminiData.result;
+
+                        // Parse format: [name],[expiry_date]
+                        // We'll remove brackets if present and split by comma
+                        const cleanResult = geminiData.result.replace(/[\[\]]/g, '');
+                        const parts = cleanResult.split(',');
+
+                        if (parts.length >= 1) setProductName(parts[0].trim());
+                        if (parts.length >= 2) setExpiryDate(parts[1].trim());
+
+                        setShowForm(true);
+                    }
+                } catch (geminiErr) {
+                    console.error("Gemini API Error:", geminiErr);
+                }
+            }
+
             setResult({
                 text: data.extracted_text,
+                analysis: geminiAnalysis,
                 status: "Success",
             });
 
@@ -55,6 +91,12 @@ export default function OCRPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSubmit = () => {
+        // TODO: Integrate with backend API to save item
+        console.log("Submitting:", { productName, expiryDate });
+        alert(`Saved successfully!\nProduct: ${productName}\nExpiry: ${expiryDate}`);
     };
 
     return (
@@ -98,7 +140,7 @@ export default function OCRPage() {
                     </div>
 
                     {/* Extract Button */}
-                    {image && (
+                    {image && !showForm && (
                         <button
                             onClick={processImage}
                             disabled={loading}
@@ -128,23 +170,56 @@ export default function OCRPage() {
                         </div>
                     )}
 
-                    {/* RESULT */}
-                    {result && (
-                        <div style={{ marginTop: '2rem' }}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Extracted Text</label>
-                                <div style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--primary)' }}>
-                                    {result.text || "No Text Found"}
-                                </div>
+                    {/* RESULT FORM */}
+                    {showForm && (
+                        <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem' }}>Verify Details</h3>
+
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Product Name</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    value={productName}
+                                    onChange={(e) => setProductName(e.target.value)}
+                                    style={{ width: '100%' }}
+                                />
                             </div>
 
-                            <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Check size={20} />
-                                <span>Text extracted successfully!</span>
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Expiry Date</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    value={expiryDate}
+                                    onChange={(e) => setExpiryDate(e.target.value)}
+                                    style={{ width: '100%' }}
+                                />
                             </div>
+
+                            <button
+                                onClick={handleSubmit}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.8rem',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    borderRadius: '0.5rem',
+                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    gap: '0.5rem'
+                                }}
+                            >
+                                <Check size={20} />
+                                Confirm & Save
+                            </button>
                         </div>
                     )}
                 </div>
+
+
             </div>
         </div>
     );
