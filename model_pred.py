@@ -118,9 +118,18 @@ def predict():
     # 6️⃣ RESTOCK LOGIC (vectorized)
     # ==============================================
     stock = np.array([item.get("stock_level", 0) for item in data])
-    daily_demand = np.array([item.get("daily_demand", 0) for item in data])
+    
+    # Try to get daily_demand from input, otherwise calculate from predictions
+    input_daily_demand = np.array([item.get("daily_demand", 0) for item in data])
+    
+    # Calculate derived daily demand from 30-day prediction
+    derived_daily_demand = pred_30 / 30.0
+    
+    # Use input daily_demand if available (>0), otherwise use derived
+    daily_demand = np.where(input_daily_demand > 0, input_daily_demand, derived_daily_demand)
 
-    days_left = np.where(daily_demand == 0, 9999, stock / daily_demand)
+    # Avoid division by zero
+    days_left = np.where(daily_demand <= 0, 9999, stock / daily_demand)
 
     need_7  = pred_7  > stock
     need_30 = pred_30 > stock
@@ -144,11 +153,11 @@ def predict():
             "item_id": item.get("item_id"),
             "stock":float(stock[i]),
 
-            "pred_7d": float(pred_7[i]),
-            "pred_30d": float(pred_30[i]),
-            "pred_60d": float(pred_60[i]),
-            "pred_180d": float(pred_180[i]),
-            "days_left": float(days_left[i]),
+            "pred_7d": int(round(pred_7[i])),
+            "pred_30d": int(round(pred_30[i])),
+            "pred_60d": int(round(pred_60[i])),
+            "pred_180d": int(round(pred_180[i])),
+            "days_left": int(round(days_left[i])),
 
             "need_restock_7d": bool(need_7[i]),
             "need_restock_30d": bool(need_30[i]),

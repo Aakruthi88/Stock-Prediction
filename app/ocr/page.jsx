@@ -13,6 +13,11 @@ export default function OCRPage() {
 
     const [productName, setProductName] = useState('');
     const [expiryDate, setExpiryDate] = useState('');
+    const [category, setCategory] = useState('General');
+    const [quantity, setQuantity] = useState('');
+    const [unitPrice, setUnitPrice] = useState('');
+    const [holdingCost, setHoldingCost] = useState('');
+    const [handlingCost, setHandlingCost] = useState('');
     const [showForm, setShowForm] = useState(false);
 
     const handleImageUpload = (e) => {
@@ -25,6 +30,11 @@ export default function OCRPage() {
             setShowForm(false);
             setProductName('');
             setExpiryDate('');
+            setCategory('General');
+            setQuantity('');
+            setUnitPrice('');
+            setHoldingCost('');
+            setHandlingCost('');
         }
     };
 
@@ -93,10 +103,45 @@ export default function OCRPage() {
         }
     };
 
-    const handleSubmit = () => {
-        // TODO: Integrate with backend API to save item
-        console.log("Submitting:", { productName, expiryDate });
-        alert(`Saved successfully!\nProduct: ${productName}\nExpiry: ${expiryDate}`);
+    const handleSubmit = async () => {
+        if (!productName || !quantity || !unitPrice || !holdingCost || !handlingCost) {
+            alert("Please fill in all required fields.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await fetch("/api/inventory/update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: productName,
+                    category,
+                    expiryDate,
+                    quantity: parseInt(quantity),
+                    unitPrice: parseFloat(unitPrice),
+                    holdingCost: parseFloat(holdingCost),
+                    handlingCost: parseFloat(handlingCost)
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                alert(`Saved successfully!\nProduct: ${productName}\nStock Level: ${data.item.stock_level}`);
+                setShowForm(false);
+                setResult(null);
+                setImage(null);
+                setImageFile(null);
+            } else {
+                alert("Failed to save: " + (data.error || "Unknown error"));
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error saving item.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -186,7 +231,25 @@ export default function OCRPage() {
                                 />
                             </div>
 
-                            <div style={{ marginBottom: '1.5rem' }}>
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Category</label>
+                                <select
+                                    className="input"
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    style={{ width: '100%' }}
+                                >
+                                    <option value="Pharma">Pharma</option>
+                                    <option value="Automotive">Automotive</option>
+                                    <option value="Electronics">Electronics</option>
+                                    <option value="Groceries">Groceries</option>
+                                    <option value="Apparel">Apparel</option>
+                                    <option value="General">General</option>
+                                    <option value="Others">Others</option>
+                                </select>
+                            </div>
+
+                            <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Expiry Date</label>
                                 <input
                                     type="text"
@@ -197,8 +260,59 @@ export default function OCRPage() {
                                 />
                             </div>
 
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Quantity Added</label>
+                                    <input
+                                        type="number"
+                                        className="input"
+                                        value={quantity}
+                                        onChange={(e) => setQuantity(e.target.value)}
+                                        style={{ width: '100%' }}
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Unit Price</label>
+                                    <input
+                                        type="number"
+                                        className="input"
+                                        value={unitPrice}
+                                        onChange={(e) => setUnitPrice(e.target.value)}
+                                        style={{ width: '100%' }}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Holding Cost / Unit / Day</label>
+                                    <input
+                                        type="number"
+                                        className="input"
+                                        value={holdingCost}
+                                        onChange={(e) => setHoldingCost(e.target.value)}
+                                        style={{ width: '100%' }}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Handling Cost / Unit</label>
+                                    <input
+                                        type="number"
+                                        className="input"
+                                        value={handlingCost}
+                                        onChange={(e) => setHandlingCost(e.target.value)}
+                                        style={{ width: '100%' }}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+
                             <button
                                 onClick={handleSubmit}
+                                disabled={loading}
                                 style={{
                                     width: '100%',
                                     padding: '0.8rem',
@@ -209,11 +323,11 @@ export default function OCRPage() {
                                     display: 'flex',
                                     justifyContent: 'center',
                                     alignItems: 'center',
-                                    gap: '0.5rem'
+                                    gap: '0.5rem',
+                                    opacity: loading ? 0.7 : 1
                                 }}
                             >
-                                <Check size={20} />
-                                Confirm & Save
+                                {loading ? <Loader2 size={20} className="animate-spin" /> : <><Check size={20} /> Confirm & Save</>}
                             </button>
                         </div>
                     )}
