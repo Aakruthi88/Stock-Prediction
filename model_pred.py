@@ -27,9 +27,18 @@ print("EasyOCR Loaded!")
 # LOAD ML MODELS & TRAIN COLUMNS
 # ================================
 print("Loading ML Models...")
-models = joblib.load("./demand_forecast_models.pkl")
-train_columns = joblib.load("./train_columns.pkl")
+
+models = {
+    "pred_7d": joblib.load("pred_7d.pkl"),
+    "pred_30d": joblib.load("pred_30d.pkl"),
+    "pred_60d": joblib.load("pred_60d.pkl"),
+    "pred_180d": joblib.load("pred_180d.pkl"),
+}
+
+train_columns = joblib.load("train_columns.pkl")
+
 print("ML Models Loaded!")
+
 
 
 # ==========================================================
