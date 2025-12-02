@@ -166,8 +166,8 @@ export default function PricingPage() {
                                     <tr key={item.item_id} style={{ borderBottom: '1px solid var(--border)' }}>
                                         <td style={{ padding: '1rem', fontWeight: '500' }}>{item.name || `Item ${item.item_id}`}</td>
                                         <td style={{ padding: '1rem' }}>{item.stock_level || item.stock}</td>
-                                        <td style={{ padding: '1rem' }}>${item.currentPrice.toFixed(2)}</td>
-                                        <td style={{ padding: '1rem', fontWeight: '600' }}>${item.suggestedPrice.toFixed(2)}</td>
+                                        <td style={{ padding: '1rem' }}>₹{item.currentPrice.toFixed(2)}</td>
+                                        <td style={{ padding: '1rem', fontWeight: '600' }}>₹{item.suggestedPrice.toFixed(2)}</td>
                                         <td style={{ padding: '1rem' }}>
                                             {!isNeutral && (
                                                 <span className={`badge ${isIncrease ? 'badge-success' : 'badge-danger'}`}>

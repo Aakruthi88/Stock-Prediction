@@ -4,8 +4,8 @@ import { useState, useRef } from 'react';
 import { Upload, Check, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function OCRPage() {
-    const [image, setImage] = useState(null);
-    const [imageFile, setImageFile] = useState(null);
+    const [images, setImages] = useState([]);
+    const [imageFiles, setImageFiles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
@@ -21,10 +21,14 @@ export default function OCRPage() {
     const [showForm, setShowForm] = useState(false);
 
     const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setImage(URL.createObjectURL(file));   // Preview
-            setImageFile(file);                    // File upload
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            const selectedFiles = files.slice(0, 3);
+            const newImages = selectedFiles.map(file => URL.createObjectURL(file));
+
+            setImages(newImages);
+            setImageFiles(selectedFiles);
+
             setResult(null);
             setError(null);
             setShowForm(false);
@@ -39,7 +43,7 @@ export default function OCRPage() {
     };
 
     const processImage = async () => {
-        if (!imageFile) return;
+        if (imageFiles.length === 0) return;
 
         setLoading(true);
         setError(null);
@@ -47,7 +51,9 @@ export default function OCRPage() {
         setShowForm(false);
 
         const formData = new FormData();
-        formData.append("image", imageFile);
+        imageFiles.forEach(file => {
+            formData.append("image", file);
+        });
 
         try {
             const res = await fetch("http://localhost:5000/extract", {
@@ -131,8 +137,8 @@ export default function OCRPage() {
                 alert(`Saved successfully!\nProduct: ${productName}\nStock Level: ${data.item.stock_level}`);
                 setShowForm(false);
                 setResult(null);
-                setImage(null);
-                setImageFile(null);
+                setImages([]);
+                setImageFiles([]);
             } else {
                 alert("Failed to save: " + (data.error || "Unknown error"));
             }
@@ -170,22 +176,27 @@ export default function OCRPage() {
                             ref={fileInputRef}
                             onChange={handleImageUpload}
                             accept="image/*"
+                            multiple
                             style={{ display: 'none' }}
                         />
 
-                        {image ? (
-                            <img src={image} alt="Preview" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '0.5rem' }} />
+                        {images.length > 0 ? (
+                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                {images.map((img, index) => (
+                                    <img key={index} src={img} alt={`Preview ${index}`} style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '0.5rem', objectFit: 'cover' }} />
+                                ))}
+                            </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: 'var(--text-muted)' }}>
                                 <Upload size={48} />
-                                <p>Click to upload or drag and drop</p>
+                                <p>Click to upload (Max 3 images)</p>
                                 <span style={{ fontSize: '0.75rem' }}>JPG, PNG supported</span>
                             </div>
                         )}
                     </div>
 
                     {/* Extract Button */}
-                    {image && !showForm && (
+                    {images.length > 0 && !showForm && (
                         <button
                             onClick={processImage}
                             disabled={loading}
@@ -273,7 +284,7 @@ export default function OCRPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Unit Price</label>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Unit Price (₹)</label>
                                     <input
                                         type="number"
                                         className="input"
@@ -287,7 +298,7 @@ export default function OCRPage() {
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Holding Cost / Unit / Day</label>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Holding Cost / Unit / Day (₹)</label>
                                     <input
                                         type="number"
                                         className="input"
@@ -298,7 +309,7 @@ export default function OCRPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Handling Cost / Unit</label>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Handling Cost / Unit (₹)</label>
                                     <input
                                         type="number"
                                         className="input"

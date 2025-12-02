@@ -40,6 +40,15 @@ export async function POST(req) {
                 reorderFrequency = diffDays;
             }
 
+            // Parse Expiry Date (dd/mm/yyyy -> yyyy-mm-dd)
+            let parsedExpiryDate = null;
+            if (expiryDate) {
+                const parts = expiryDate.split('/');
+                if (parts.length === 3) {
+                    parsedExpiryDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+            }
+
             // Update Item
             const { data: updatedItem, error: updateError } = await supabase
                 .from('items')
@@ -51,6 +60,7 @@ export async function POST(req) {
                     unit_price: unitPrice,
                     holding_cost_per_unit_day: holdingCost,
                     handling_cost_per_unit: handlingCost,
+                    expiry_date: parsedExpiryDate
                 })
                 .eq('item_id', existingItem.item_id)
                 .select()
@@ -119,6 +129,15 @@ export async function POST(req) {
 
             console.log(`Max ID found: ${maxIdNum} (Lex: ${maxLex}, Date: ${maxDate})`);
 
+            // Parse Expiry Date (dd/mm/yyyy -> yyyy-mm-dd)
+            let parsedExpiryDate = null;
+            if (expiryDate) {
+                const parts = expiryDate.split('/');
+                if (parts.length === 3) {
+                    parsedExpiryDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+            }
+
             // 3. Retry Loop for Insertion
             let insertedItem = null;
             let attempts = 0;
@@ -144,7 +163,8 @@ export async function POST(req) {
                         handling_cost_per_unit: handlingCost,
                         last_restock_date: new Date().toISOString(),
                         date_added: new Date().toISOString(),
-                        is_active: true
+                        is_active: true,
+                        expiry_date: parsedExpiryDate
                     })
                     .select()
                     .single();

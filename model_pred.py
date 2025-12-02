@@ -37,28 +37,28 @@ print("ML Models Loaded!")
 # ==========================================================
 @app.route("/extract", methods=["POST"])
 def extract_text():
-    if "image" not in request.files:
+    files = request.files.getlist("image")
+    
+    if not files:
         return jsonify({"error": "No image provided"}), 400
 
-    file = request.files["image"]
+    all_extracted_text = []
 
     try:
-        image = Image.open(file.stream)
+        for file in files:
+            image = Image.open(file.stream)
 
-        # OCR extraction
-        img_array = np.array(image)
-        results = reader.readtext(img_array, detail=0)
-        extracted_text = "\n".join(results)
+            # OCR extraction
+            img_array = np.array(image)
+            results = reader.readtext(img_array, detail=0)
+            text = "\n".join(results)
+            all_extracted_text.append(text)
 
-        # Convert image to base64 for preview
-        buf = io.BytesIO()
-        image.save(buf, format="PNG")
-        img_b64 = base64.b64encode(buf.getvalue()).decode()
+        combined_text = "\n\n--- Next Image ---\n\n".join(all_extracted_text)
 
         return jsonify({
             "success": True,
-            "extracted_text": extracted_text,
-            "image_preview": f"data:image/png;base64,{img_b64}"
+            "extracted_text": combined_text
         })
 
     except Exception as e:

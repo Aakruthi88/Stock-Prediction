@@ -5,7 +5,7 @@ import { TrendingUp, AlertTriangle, DollarSign, Package } from 'lucide-react';
 
 export default function Home() {
   const [stats, setStats] = useState([
-    { title: "Total Revenue", value: "$12,450", change: "+15%", icon: DollarSign, color: "var(--primary)", bg: "#e0e7ff" },
+    { title: "Total Revenue", value: "₹12,450", change: "+15%", icon: DollarSign, color: "var(--primary)", bg: "#e0e7ff" },
     { title: "Low Stock Items", value: "...", change: "...", icon: AlertTriangle, color: "var(--warning)", bg: "#fef3c7" },
     { title: "Predicted Demand (7d)", value: "...", change: "...", icon: TrendingUp, color: "var(--success)", bg: "#d1fae5" },
     { title: "Active Products", value: "...", change: "0%", icon: Package, color: "var(--text-muted)", bg: "#f3f4f6" }
@@ -25,7 +25,7 @@ export default function Home() {
           setStats([
             {
               title: "Total Revenue",
-              value: "$12,450", // Static for now
+              value: "₹12,450", // Static for now
               change: "+15%",
               icon: DollarSign,
               color: "var(--primary)",
